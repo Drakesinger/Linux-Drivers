@@ -88,6 +88,10 @@ strace ./hello
 ```
 See the `write(...)` at the end? That's one System Call.
 
+> More information on the GNU C Library can be found at [GNU Lib C](https://www.gnu.org/software/libc/).
+
+> For information on Windows C Library go to [MSDN - C Run-Time Library Reference](https://msdn.microsoft.com/en-us/library/59ey50w6.aspx).
+
 ### Supervisor vs User Mode
 It should be of note that User Space applications and processes run in User Mode, where they can change the memory in User Space.
 
