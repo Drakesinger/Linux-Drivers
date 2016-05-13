@@ -17,14 +17,14 @@ Used resources:
 - vimtutor
 - [VIM Docs](http://www.vim.org/docs.php)
 
-Kernel documentation itself can be downloaded from Linux Kernel (take the version you want to make your driver for) source code at:
+Kernel documentation itself can be downloaded from the Linux Kernel source code (take the version you want to make your driver for) located at:
 ```
 www.kernel.org
 ```
 You need to extract the sources:
 ```bash
-tar -xf linux-4.2.5.tar.xz
-cd linux-4.2.5
+tar -xf linux-[version].tar.xz
+cd linux-[version]
 ```
 In order to help you, you should make the documentation:
 ```bash
@@ -34,8 +34,66 @@ $ make installmandocs # To install the manual files.
 
 ## Theory
 
-# TODO
---------------------
+### Memory
+Here is a basic representation of how the kernel and memory works.
+The kernel represents the running kernel software that is in Memory (RAM).
+
+```
++---+ +-----------------------------------------------Memory------------------------------------------------+
+|   | |                                                 |                                                   |
+|   | |               Kernel Space                      |                     User Space                    |
+|   | |                                                 |                                                   |
+|   | |                                                 |                                                   |
+|   | |                                                 |   bad practice  +-----------------+               |
+|   | |                                                 |    +------------+  User Processes |               |
+|   | |           +-----------------+                   |    |            +------+---^------+               |
+|   | |           |                 <------------+      |    |                   |   |                      |
+| H | |     +-----+     Kernel      |            |      |    |                   |   |                      |
+| a | |     |     |                 |         +--+------+----v---+               |   |                      |
+| r | |     |     +-----------------+         |   System Calls   |               |   |                      |
+| d | |     |                                 +--+------+---^-+--+               |   |                      |
+| w | |     |                                    |      |   | |                  |   |                      |
+| a | |     |         +---------+                |      |   | |              +---v---+---+                  |
+| r | |     |         |Scheduler+----------------+      |   | +-------------->  Library  |                  |
+| e | |     |         +---------+                       |   +----------------+ Functions |                  |
+|   | |     |                                           |                    |  (glibc)  |                  |
+|   | |     +-------------+                             |                    +-----------+                  |
+|   | |                   |                             |                                                   |
+|   | |             +-----v-------+                     |                                                   |
+|   <---------------+   Drivers   |                     |                                                   |
+|   | |             +-------------+                     |                                                   |
+|   | |                                                 |                                                   |
++---+ +-------------------------------------------------+---------------------------------------------------+
+```
+
+In order for a running program instance (process) to communicate with the hardware, one or more system calls will be executed. These system calls are called by the library implementation [`glibc`](https://www.gnu.org/software/libc/) in the order defined by the Kernel's Scheduler. One can call them directly but it is considered bad practice (the `glibc` implementation is considered to be optimized for these calls).
+
+The system calls are run by the Kernel and their result is then provided to the user process.
+
+Want to see what system calls are used to run your `printf("Hello World!");`?
+
+Do the following (you can write this as is in the console):
+```bash
+$ cat << EOF > hello.c
+#include <stdio.h>
+int main(void)
+{  
+  printf("hello");
+  return 0;
+}
+EOF
+
+gcc -Wall -o hello hello.c
+strace ./hello
+```
+See the `write(...)` at the end? That's one System Call.
+
+### Supervisor vs User Mode
+It should be of note that User Space applications and processes run in User Mode, where they can change the memory in User Space.
+
+The Kernel runs in Supervisor mode and the system calls made run in this mode on behalf of the user. Everything goes in Supervisor mode. The running Kernel software has access to the entire memory and can delete whatever it wants (although normally this is not the case). It can also decide to allow a process for example to execute in DMA ([Direct Memory Access](https://en.wikipedia.org/wiki/Direct_memory_access)) mode.
+So when writing a driver, care must be taken so that you don't mess up your system.
+
 ## Implementation
 
 ## Basics
@@ -44,7 +102,7 @@ $ make installmandocs # To install the manual files.
 
 > #### A note about headers.
 >
-> You may want to look at the sources of your installed kernel (and not only the downloaded one), in order to find it:
+> You may want to look at the sources of your installed kernel (and not only the downloaded one).<br> In order to find them:
 > ```bash
 cd /usr/src/linux-headers[version]-common/include/linux/
 ```
@@ -62,7 +120,7 @@ Required headers for all modules:
 #include <linux/module.h>
 #include <linux/kernel.h>
 ```
-
+The module header is required by all modules.
 The kernel header contains the kernel functions that your module can use.
 
 ### Initialization and Cleanup functions
@@ -129,7 +187,7 @@ Here are the possible functions that we can implement:
 /* TODO */
 ```
 
-Since we want to implement a char driver that takes in a string supplied by the user and returns it in inverse we will need to implement the open, release, write and read functions.
+Since we want to implement a char driver that takes in a string supplied by the user and returns it's reverse we will need to implement the `open`, `release`, `write` and `read` functions.
 
 ```c
 /*
@@ -143,3 +201,5 @@ static struct file_operations fops = {
 	.release = device_release
 };
 ```
+
+### Registering your device driver
