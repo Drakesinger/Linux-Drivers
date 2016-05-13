@@ -104,13 +104,13 @@ So when writing a driver, care must be taken so that you don't mess up your syst
 >
 > You may want to look at the sources of your installed kernel (and not only the downloaded one).<br> In order to find them:
 > ```bash
-cd /usr/src/linux-headers[version]-common/include/linux/
+$ cd /usr/src/linux-headers[version]-common/include/linux/
 ```
 >
 > If these headers are not available:
 >```bash
-apt-cache search linux-headers-$(uname -r)
-apt-get install linux-headers-$(uname -r)
+$ apt-cache search linux-headers-$(uname -r)
+$ apt-get install linux-headers-$(uname -r)
 ```
 >
 
@@ -203,3 +203,34 @@ static struct file_operations fops = {
 ```
 
 ### Registering your device driver
+
+If you look at some device drivers:
+```bash
+$ ls -l /dev/
+```
+You'll get an output such as:
+```bash
+crw------T  1 root root     10, 235 May 11 19:59 autofs
+drwxr-xr-x  2 root root         300 May 11 19:59 block
+drwxr-xr-x  2 root root          80 May 11 19:59 bsg
+crw------T  1 root root     10, 234 May 11 19:59 btrfs-control
+drwxr-xr-x  3 root root          60 May 11 19:59 bus
+lrwxrwxrwx  1 root root           3 May 11 19:59 cdrom -> sr0
+```
+
+The column with numbers in the middle, before the date and after the group field, you have information about which driver handles this device.
+
+1. Major number
+2. Minor number
+
+The Kernel itself only cares about the Major number: it specifies the registered driver that is this device's handler.
+The Minor number is used by the driver itself to handle different types of devices.
+
+We can see here that `autofs` and `btrfs-control` is handled by the same driver. The two different file systems are handled differently (probably) by the driver by identifying each device with a different minor number.
+
+Too see which Major numbers are available and which number represents what, read the file `[linux kernel source path]/Documentation/devices.txt`.
+
+In order to register our device driver we need to use the following function:
+```c
+int  register_chrdev(int MAJOR_NUMBER, const char* DEVICE_NAME, struct file_operations* fops);
+```
