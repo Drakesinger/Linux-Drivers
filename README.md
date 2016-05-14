@@ -522,6 +522,7 @@ $ cat /dev/chardev
 #### What's left
 
 1. Make a c program to illustrate reading and writing to this device driver.
+
 > ```c
 int main(int argc, char* argv[])
 {
@@ -534,7 +535,9 @@ int main(int argc, char* argv[])
 ```
 
 2. IOCTL
+
   Sadly this part failed due to my bad understanding of the `kbuild` system.
   The information from Linux Driver Programming is not enough to be able to do this part and didn't have time yet to study the Linux Device Drivers book in full.
 3. System Calls
+  
   Same as before, this part however looks very interesting and will surely be addressed soon.
