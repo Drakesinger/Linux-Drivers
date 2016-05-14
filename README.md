@@ -232,9 +232,186 @@ The Minor number is used by the driver itself to handle different types of devic
 
 We can see here that `autofs` and `btrfs-control` is handled by the same driver. The two different file systems are handled differently (probably) by the driver by identifying each device with a different minor number.
 
-Too see which Major numbers are available and which number represents what, read the file `[linux kernel source path]/Documentation/devices.txt`.
+Too see which Major numbers are available and which number represents what, read the following file:
+
+`[linux kernel source path]/Documentation/devices.txt`.
 
 In order to register our device driver we need to use the following function:
 ```c
 int  register_chrdev(int MAJOR_NUMBER, const char* DEVICE_NAME, struct file_operations* fops);
+```
+
+This will return a positive value containing the registered Major number if the registration was accepted by the kernel and a negative one otherwise.
+If the MAJOR_NUMBER provided is 0, the kernel will dynamically assign a Major Number to the driver.
+
+Once the registration is done, we need to make a link to the device driver with the following command:
+```bash
+$ sudo mknod /dev/[DEVICE_NAME] c [Major Number provided] 0
+```
+
+This will make a link to our device with the dynamic major and the minor 0.
+
+During cleanup, we need to unregister our driver with:
+```c
+void unregister_chrdev(int MAJOR_NUMBER, const char* DEVICE_NAME);
+```
+
+This function should always returns.
+
+### Driver Functionality
+
+#### Device Open
+```c
+// Called when a process tries to open the device file like: "cat /dev/mycharfile".
+static int device_open(struct inode* inode, struct file* filp)
+{
+	static int counter = 0;
+
+	if (Device_Open)
+	{
+		return -EBUSY;
+	}
+
+	Device_Open++;
+
+	// Don't do this for now.
+	//sprintf(msg_read, "I already told you %d times Hello world!\n", counter++);
+  printk(KERN_INFO "device_open, msg_read = %s, msg_write = %s\n", msg_read, msg_write);
+	// Make our pointers point to the correct place.
+	msg_read_Ptr = msg_read;
+	msg_write_Ptr = msg_write;
+
+	try_module_get(THIS_MODULE);
+
+	return SUCCESS;
+}
+```
+
+#### Device release
+```c
+// Called when a process closes the device file.
+static int device_release(struct inode* inode, struct file* file)
+{
+	printk(KERN_INFO "device_release\n");
+	Device_Open--; // We're now ready for our next caller.
+
+	/**
+	 * Decrement the usage count, or else once you opened the file,
+	 * you'll never get rid of the module.
+	 */
+	module_put(THIS_MODULE);
+	return 0;
+}
+
+```
+
+#### Device Read
+
+```c
+/*
+ * Called when a process, that has already opened the device file,
+ * attempts to read from it.
+ */
+static ssize_t device_read(struct file* filp,	/* see include/linux/fs.h */
+			   char* buffer, 	/* buffer to fill with data */
+			   size_t length, 	/* length of the buffer */
+			   loff_t* offset)
+{
+	// Number of bytes actuallly written to the buffer.
+	int bytes_read = 0;
+
+	/*
+	 * If we're at the end of the message:
+	 * return 0, meaning EoF.
+	 */
+	if (*msg_read_Ptr == 0)
+	{
+		printk(KERN_INFO "read. EOF!");
+		return 0;
+	}
+
+	printk("read put: *msg_read_Ptr = %c\n", *msg_read_Ptr);
+
+	// Put the data into the buffer.
+	while (length && *msg_read_Ptr)
+	{
+		/*
+		 * The buffer is in the user data segment, not the kernel segment
+		 * so "*" assignment won't work. We have to use put_user
+		 * which copies data from the kernel's data segment to
+		 * the user's data segment.
+		 *
+		 * So this copies from msg_read_Ptr to buffer.
+		 */
+		put_user(*(msg_read_Ptr++), buffer++);
+
+		length--;
+		bytes_read++;
+	}
+
+  	// More debug.
+  	printk(KERN_INFO "device_read: %d bytes, %d left\n", bytes_read, length);
+
+  	// Most read functions return the number of bytes put into the buffer.
+  	return bytes_read;
+  }
+```
+#### Device Write
+
+```c
+// Called when a process writes to dev file: echo "hi" > /dev/hello
+static ssize_t device_write(struct file* filp, const char __user*  buff, size_t len, loff_t* off)
+{
+	int i;
+       	int j;
+	int bytes_written = 0;
+	//printk(KERN_INFO "device_write(%p, %s)\n", filp, buff);
+
+	// Get message from user data segment.
+	for(i = 0; i < len && i < BUF_LEN; i++)
+	{
+		// Fill the buffer from the user data segment.
+		// copy from the pointer buff to msg.
+		get_user(msg_write[i], buff + i);
+	}
+
+	bytes_written = i;
+	i -= 2; // Take out the "\n\0".
+
+	// msg_write now contains the buffer.
+	// We can reverse it if we want.
+	for(j = 0; j <= bytes_written && j < BUF_LEN && i >= 0; j++)
+	{
+		// Problem may be the finishing 0.
+		if(msg_write[i] == '\0' || msg_write[i] == '\n')
+		{
+			printk(KERN_INFO "Should not happen.\n");
+			msg_read[j] = '0';
+			i--;
+		}
+		else
+		{
+			msg_read[j] = msg_write[i--];
+		}
+		//printk(KERN_INFO "msg_read[%d]=%c\n",j,msg_read[j]);
+		// This confirms that the array is filled.
+	}
+
+	// Add the /n and /0
+	msg_read[++j] = msg_write[bytes_written-1];	//'\n';
+	msg_read[++j] = msg_write[bytes_written];	//'\0';
+
+	printk(KERN_INFO "device_write, msg_read = %s, msg_write = %s\n", msg_read, msg_write);
+	printk(KERN_INFO "bytes_written : %d\n", bytes_written);
+
+	// This is the part where everything goes to hell.
+	// Doesn't show anything in console.
+	//sprintf(msg, msg_write);
+
+	// This is a bit weird. Should have already been done.
+	msg_read_Ptr = msg_read;
+	msg_write_Ptr = msg_write;
+
+	return bytes_written;
+}
 ```
