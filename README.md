@@ -26,7 +26,7 @@ A repository containing Linux driver development experiments.
 		- [Device Read](#device-read)
 		- [Device Write](#device-write)
 		- [Testing](#testing)
-			- [What's left](#whats-left)
+		- [What's left](#whats-left)
 
 <!-- /TOC -->
 
@@ -37,7 +37,7 @@ A repository containing Linux driver development experiments.
 
 ## Documentation
 
-Used resources:
+Used resources (in order of use):
 - [Linux Driver Programming](http://www.tldp.org/LDP/lkmpg/2.6/html/index.html)
 
   This one has been used the most.
@@ -51,7 +51,10 @@ Used resources:
   Not one of the official cross reference projects but the 1st one that is easy to use directly.
 - [Linux Kernel Hacking](https://www.kernel.org/doc/htmldocs/kernel-hacking/index.html)
 - [The Linux Information Project](http://www.linfo.org/index.html)
+- [Writing a Linux Character Device Driver](https://appusajeev.wordpress.com/2011/06/18/writing-a-linux-character-device-driver/)
 - [Kernel Newbies](http://kernelnewbies.org/Documents)
+
+For VIM:
 - vimtutor
 - [VIM Docs](http://www.vim.org/docs.php)
 
@@ -297,7 +300,13 @@ This function always returns.
 
 ### Driver Functionality
 
-This snipets below are just that: snipets. In order to see the full code, check out the file `./char/char_dev.c`.
+This snippets below are just that: snippets.
+In order to see the full code, check out the file `./char/char_dev.c`.
+
+In order to be able to transfer data from user space to kernel space (read and write functions), we need to include the following header:
+```c
+#include <asm/uaccess.h>
+```
 
 #### Device Open
 
@@ -510,7 +519,7 @@ $ echo "Heya there." > /dev/chardev
 $ cat /dev/chardev
 ```
 
-##### What's left
+#### What's left
 
 1. Make a c program to illustrate reading and writing to this device driver.
 > ```c
