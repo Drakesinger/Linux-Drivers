@@ -523,7 +523,7 @@ $ cat /dev/chardev
 
 1. Make a c program to illustrate reading and writing to this device driver.
 
-> ```c
+```c
 int main(int argc, char* argv[])
 {
   int i = 0;
