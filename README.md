@@ -146,12 +146,12 @@ So when writing a driver, care must be taken so that you don't mess up your syst
 > #### A note about headers.
 >
 > You may want to look at the sources of your installed kernel (and not only the downloaded one).<br> In order to find them:
-> ```bash
+```bash
 $ cd /usr/src/linux-headers[version]-common/include/linux/
 ```
 >
 > If these headers are not available:
->```bash
+```bash
 $ apt-cache search linux-headers-$(uname -r)
 $ apt-get install linux-headers-$(uname -r)
 ```
@@ -537,7 +537,7 @@ int main(int argc, char* argv[])
 2. IOCTL
 
   Sadly this part failed due to my bad understanding of the `kbuild` system.
-  The information from Linux Driver Programming is not enough to be able to do this part and didn't have time yet to study the Linux Device Drivers book in full.
+  The information from Linux Driver Programming is not enough (for me) to be able to do this part and didn't have time yet to study the Linux Device Drivers book in full.
 3. System Calls
   
   Same as before, this part however looks very interesting and will surely be addressed soon.
